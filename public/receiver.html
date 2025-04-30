@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LED Receiver</title>
+</head>
+<body>
+  <h1>Listening for LED control...</h1>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    socket.on('led', (state) => {
+      console.log('Received LED state:', state);
+      // You could update UI here if needed
+    });
+  </script>
+</body>
+</html>
