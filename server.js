@@ -1,43 +1,48 @@
 const express = require("express");
 const path = require("path");
+const http = require("http");
 const WebSocket = require("ws");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(express.static(path.join(__dirname, "public")));
-
-const server = app.listen(PORT, () => {
-  console.log(`Cloud server running on port ${PORT}`);
-});
-
-// WebSocket relay
+const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-let hardwareClient = null;
+let hardwareSocket = null;
 
 wss.on("connection", (ws) => {
-  console.log("Client connected");
+  console.log("New WebSocket connection");
 
   ws.on("message", (msg) => {
     try {
       const { type, data } = JSON.parse(msg);
 
       if (type === "register" && data === "hardware") {
-        hardwareClient = ws;
-        console.log("Hardware client registered");
-      } else if (type === "color" && hardwareClient) {
-        hardwareClient.send(JSON.stringify({ type: "color", data }));
+        hardwareSocket = ws;
+        console.log("Hardware connected");
+      } else if (
+        type === "color" &&
+        hardwareSocket &&
+        hardwareSocket.readyState === WebSocket.OPEN
+      ) {
+        hardwareSocket.send(JSON.stringify({ type: "color", data }));
+        console.log("Forwarded color to hardware:", data);
       }
-    } catch (e) {
-      console.error("Invalid message:", msg);
+    } catch (err) {
+      console.error("Failed to parse message:", err);
     }
   });
 
   ws.on("close", () => {
-    if (ws === hardwareClient) {
-      hardwareClient = null;
+    if (ws === hardwareSocket) {
+      hardwareSocket = null;
       console.log("Hardware disconnected");
     }
   });
+});
+
+app.use(express.static(path.join(__dirname, "public")));
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
